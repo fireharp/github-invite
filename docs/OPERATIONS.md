@@ -1,6 +1,6 @@
 # Operations
 
-This Worker serves shareable GitHub collaborator invite links at `https://github-invite.fireharp.com`.
+This Worker serves shareable GitHub collaborator invite links. Deployment-specific values belong in environment variables or Worker secrets, not committed docs.
 
 ## Agent Prompts
 
@@ -17,17 +17,17 @@ Use these prompt shapes when asking an agent to operate the service:
 ```bash
 TOKEN=$(openssl rand -hex 16)
 
-curl -X POST https://github-invite.fireharp.com/admin/invite \
+curl -X POST "$APP_URL/admin/invite" \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "token": "'"$TOKEN"'",
-    "repoOwner": "fireharp",
-    "repoName": "better-stack-assignment",
+    "repoOwner": "<owner>",
+    "repoName": "<repo>",
     "maxClaims": 0,
-    "expiresAt": "2026-06-01T00:00:00Z",
+    "expiresAt": "<ISO-8601-or-null>",
     "omitPermission": true,
-    "githubTokenKey": null
+    "githubTokenKey": "<key-or-null>"
   }'
 ```
 
@@ -36,7 +36,7 @@ The response returns the share URL. Do not commit generated tokens.
 ## Revoke Invite Link
 
 ```bash
-curl -X POST https://github-invite.fireharp.com/admin/revoke \
+curl -X POST "$APP_URL/admin/revoke" \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"token":"<original-share-token>"}'
@@ -80,6 +80,11 @@ For org-owned repositories, use `permission` with one of `pull`, `triage`, `push
 ## Deploy
 
 ```bash
+export CLOUDFLARE_ACCOUNT_ID="<account-id>"
+export CLOUDFLARE_ZONE_NAME="<zone-name>"
+export INVITE_KV_NAMESPACE_ID="<kv-namespace-id>"
+export WORKER_HOSTNAME="<hostname>"
+
 pnpm install
 pnpm type-check
 pnpm test
@@ -89,13 +94,13 @@ pnpm run deploy
 Verify:
 
 ```bash
-curl -I https://github-invite.fireharp.com/
-curl -sS 'https://github-invite.fireharp.com/?token=<token>' | rg 'Private Repo Invite|GitHub username|Send invite'
+curl -I "$APP_URL/"
+curl -sS "$APP_URL/?token=<token>" | rg 'Private Repo Invite|GitHub username|Send invite'
 ```
 
 ## Troubleshooting
 
-- `DNS_PROBE_FINISHED_NXDOMAIN`: check public DNS with `dig @1.1.1.1 github-invite.fireharp.com`; local resolvers may cache NXDOMAIN for the SOA negative TTL.
+- `DNS_PROBE_FINISHED_NXDOMAIN`: check public DNS with `dig @1.1.1.1 <hostname>`; local resolvers may cache NXDOMAIN for the SOA negative TTL.
 - `401 Unauthorized`: missing or wrong `ADMIN_TOKEN`.
 - `Server token lacks permission`: rotate the selected GitHub PAT and ensure it has collaborator administration access for the target repo.
 - `GitHub invite rate limit reached`: GitHub collaborator invites are rate limited; retry later or use a different authorized token if appropriate.

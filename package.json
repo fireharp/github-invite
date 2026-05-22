@@ -4,8 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
+    "build:config": "node scripts/build-wrangler-config.mjs",
+    "dev": "pnpm build:config && wrangler dev -c wrangler.generated.jsonc",
+    "deploy": "pnpm build:config && wrangler deploy -c wrangler.generated.jsonc",
     "type-check": "tsc --noEmit",
     "test": "vitest run"
   },

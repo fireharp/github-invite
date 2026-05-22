@@ -6,12 +6,23 @@ Each invite link is stored by SHA-256 hash of the share token and can target a d
 
 See [docs/OPERATIONS.md](docs/OPERATIONS.md) for agent-friendly create, revoke, access removal, deploy, redeploy, and troubleshooting runbooks.
 
-## Secrets
+## Environment
+
+Set deployment-specific values as Worker secrets or local shell environment variables. Do not commit concrete domains, target repos, emails, Cloudflare resource IDs, or token values into docs.
+
+Deploy-time environment variables:
+
+- `CLOUDFLARE_ACCOUNT_ID`
+- `CLOUDFLARE_ZONE_NAME`
+- `INVITE_KV_NAMESPACE_ID`
+- `WORKER_HOSTNAME`
+
+Worker secrets:
 
 - `ADMIN_TOKEN`: bearer token for `/admin/*`
-- `APP_URL`: public base URL, `https://github-invite.fireharp.com`
+- `APP_URL`: public base URL used when returning share links
 - `GITHUB_TOKEN`: fallback GitHub PAT
-- `GITHUB_TOKENS_JSON`: optional JSON map, e.g. `{ "client-a": "<github-token>" }`
+- `GITHUB_TOKENS_JSON`: optional JSON map of named GitHub PATs
 - `RESEND_API_KEY`: optional Resend API key
 - `RESEND_FROM_EMAIL`: optional verified sender
 - `ALERT_TO_EMAIL`: optional alert recipient
@@ -22,6 +33,7 @@ See [docs/OPERATIONS.md](docs/OPERATIONS.md) for agent-friendly create, revoke, 
 pnpm install
 pnpm type-check
 pnpm test
+pnpm build:config
 pnpm run deploy
 ```
 
@@ -29,15 +41,15 @@ pnpm run deploy
 
 ```bash
 TOKEN=$(openssl rand -hex 16)
-curl -X POST https://github-invite.fireharp.com/admin/invite \
+curl -X POST "$APP_URL/admin/invite" \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "token": "'"$TOKEN"'",
-    "repoOwner": "fireharp",
-    "repoName": "better-stack-assignment",
+    "repoOwner": "<owner>",
+    "repoName": "<repo>",
     "maxClaims": 0,
-    "expiresAt": "2026-06-01T00:00:00Z",
+    "expiresAt": "<ISO-8601-or-null>",
     "omitPermission": true
   }'
 ```
@@ -47,7 +59,7 @@ The response includes the share URL.
 ## Revoke an invite
 
 ```bash
-curl -X POST https://github-invite.fireharp.com/admin/revoke \
+curl -X POST "$APP_URL/admin/revoke" \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"token":"<original-share-token>"}'

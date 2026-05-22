@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { sha256, validateInvite, resolveGitHubToken, worker, type Env, type InviteRecord } from "../src/index";
 
 const baseInvite: InviteRecord = {
-  repoOwner: "fireharp",
-  repoName: "better-stack-assignment",
+  repoOwner: "owner",
+  repoName: "example-repo",
   permission: "pull",
   omitPermission: true,
   maxClaims: 0,
@@ -101,7 +101,7 @@ async function makeEnv(record?: InviteRecord, token = "share-token"): Promise<En
     INVITE_KV: kv as unknown as KVNamespace,
     INVITE_CLAIMS: claims as unknown as DurableObjectNamespace,
     GITHUB_TOKEN: "fallback-token",
-    APP_URL: "https://github-invite.fireharp.com",
+    APP_URL: "https://invite.example.test",
     ADMIN_TOKEN: "admin-secret",
   };
 }
@@ -149,7 +149,7 @@ describe("worker routes", () => {
 
   it("requires a token at the public root", async () => {
     const env = await makeEnv();
-    const res = await worker.fetch(new Request("https://github-invite.fireharp.com/"), env);
+    const res = await worker.fetch(new Request("https://invite.example.test/"), env);
 
     expect(res.status).toBe(400);
     expect(await res.text()).toContain("Missing invite token.");
@@ -157,12 +157,12 @@ describe("worker routes", () => {
 
   it("renders the invite form for a valid token", async () => {
     const env = await makeEnv(baseInvite);
-    const res = await worker.fetch(new Request("https://github-invite.fireharp.com/?token=share-token"), env);
+    const res = await worker.fetch(new Request("https://invite.example.test/?token=share-token"), env);
     const html = await res.text();
 
     expect(res.status).toBe(200);
     expect(html).toContain("Private Repo Invite");
-    expect(html).toContain("fireharp/better-stack-assignment");
+    expect(html).toContain("owner/example-repo");
     expect(html).toContain('data-theme-option="system"');
     expect(html).toContain('data-theme-option="light"');
     expect(html).toContain('data-theme-option="dark"');
@@ -171,14 +171,14 @@ describe("worker routes", () => {
 
   it("requires admin auth", async () => {
     const env = await makeEnv();
-    const res = await worker.fetch(new Request("https://github-invite.fireharp.com/admin/invite", { method: "POST" }), env);
+    const res = await worker.fetch(new Request("https://invite.example.test/admin/invite", { method: "POST" }), env);
 
     expect(res.status).toBe(401);
   });
 
   it("creates an invite with a named credential key", async () => {
     const env = await makeEnv();
-    const res = await worker.fetch(new Request("https://github-invite.fireharp.com/admin/invite", {
+    const res = await worker.fetch(new Request("https://invite.example.test/admin/invite", {
       method: "POST",
       headers: {
         Authorization: "Bearer admin-secret",
@@ -186,14 +186,14 @@ describe("worker routes", () => {
       },
       body: JSON.stringify({
         token: "new-token",
-        repoOwner: "fireharp",
-        repoName: "better-stack-assignment",
+        repoOwner: "owner",
+        repoName: "example-repo",
         githubTokenKey: "client-a",
       }),
     }), env);
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ ok: true, url: "https://github-invite.fireharp.com/?token=new-token" });
+    expect(await res.json()).toEqual({ ok: true, url: "https://invite.example.test/?token=new-token" });
 
     const raw = await env.kv.get(`invite:${await sha256("new-token")}`);
     expect(JSON.parse(raw ?? "{}")).toMatchObject({ githubTokenKey: "client-a" });
@@ -208,8 +208,8 @@ describe("worker routes", () => {
     const env = await makeEnv({ ...baseInvite, maxClaims: 2 });
     const body = new URLSearchParams({ token: "share-token", username: "octocat" });
 
-    const first = await worker.fetch(new Request("https://github-invite.fireharp.com/", { method: "POST", body }), env);
-    const second = await worker.fetch(new Request("https://github-invite.fireharp.com/", { method: "POST", body }), env);
+    const first = await worker.fetch(new Request("https://invite.example.test/", { method: "POST", body }), env);
+    const second = await worker.fetch(new Request("https://invite.example.test/", { method: "POST", body }), env);
 
     expect(first.status).toBe(200);
     expect(await first.text()).toContain("Invite sent");
@@ -228,8 +228,8 @@ describe("worker routes", () => {
     const failed = new URLSearchParams({ token: "share-token", username: "octocat" });
     const retried = new URLSearchParams({ token: "share-token", username: "monalisa" });
 
-    const first = await worker.fetch(new Request("https://github-invite.fireharp.com/", { method: "POST", body: failed }), env);
-    const second = await worker.fetch(new Request("https://github-invite.fireharp.com/", { method: "POST", body: retried }), env);
+    const first = await worker.fetch(new Request("https://invite.example.test/", { method: "POST", body: failed }), env);
+    const second = await worker.fetch(new Request("https://invite.example.test/", { method: "POST", body: retried }), env);
 
     expect(await first.text()).toContain("nope");
     expect(await second.text()).toContain("Invite sent");
