@@ -81,6 +81,12 @@ const STYLES = `
   .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 32px; max-width: 420px; width: 100%; box-shadow: var(--shadow); }
   h1 { font-size: 1.25rem; margin: 0 0 8px; letter-spacing: 0; }
   p  { color: var(--muted); font-size: 0.9rem; margin: 0 0 20px; }
+  .repo {
+    display: inline-flex; align-items: center; max-width: 100%; margin: 0 0 18px;
+    padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text); background: var(--field); font: 0.86rem ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    overflow-wrap: anywhere;
+  }
   input {
     width: 100%; padding: 10px 12px; font-size: 1rem;
     background: var(--field); color: var(--text);
@@ -168,9 +174,14 @@ const wrap = (inner: string) =>
 <title>GitHub Repo Invite</title><script>${THEME_BOOT}</script><style>${STYLES}</style></head>
 <body>${THEME_CONTROLS}<div class="card">${inner}</div><script>${THEME_SCRIPT}</script></body></html>`;
 
-const formPage = (token: string, error?: string) => wrap(`
+function repoLabel(inv: Pick<InviteRecord, "repoOwner" | "repoName">): string {
+  return `${inv.repoOwner}/${inv.repoName}`;
+}
+
+const formPage = (token: string, inv: InviteRecord, error?: string) => wrap(`
   <h1>Private Repo Invite</h1>
-  <p>Enter your GitHub username to receive a collaborator invite.</p>
+  <p>Enter your GitHub username to receive a collaborator invite to:</p>
+  <div class="repo">${esc(repoLabel(inv))}</div>
   ${error ? `<div class="msg error">${esc(error)}</div>` : ""}
   <form method="POST" action="/">
     <input type="hidden" name="token" value="${esc(token)}">
@@ -180,9 +191,10 @@ const formPage = (token: string, error?: string) => wrap(`
   </form>
 `);
 
-const successPage = (login: string) => wrap(`
+const successPage = (login: string, inv: InviteRecord) => wrap(`
   <h1>Invite sent</h1>
   <p>Check your GitHub notifications to accept the collaborator invite for <strong>@${esc(login)}</strong>.</p>
+  <div class="repo">${esc(repoLabel(inv))}</div>
 `);
 
 const errorPage = (msg: string) => wrap(`
@@ -496,7 +508,7 @@ export const worker = {
       if (!inv) return htmlResp(errorPage("Invalid invite link."), 404);
       const err = validateInvite(inv);
       if (err) return htmlResp(errorPage(err), 410);
-      return htmlResp(formPage(token));
+      return htmlResp(formPage(token, inv));
     }
 
     if (isInvitePath(url.pathname) && request.method === "POST") {
@@ -513,28 +525,28 @@ export const worker = {
       if (invErr) return htmlResp(errorPage(invErr), 410);
 
       if (!username || !/^[a-zA-Z0-9][a-zA-Z0-9-]{0,38}$/.test(username)) {
-        return htmlResp(formPage(token, "Invalid GitHub username format."));
+        return htmlResp(formPage(token, inv, "Invalid GitHub username format."));
       }
 
       if (username.toLowerCase() === inv.repoOwner.toLowerCase()) {
-        return htmlResp(formPage(token, `@${esc(username)} is the repository owner and already has full access.`));
+        return htmlResp(formPage(token, inv, `@${esc(username)} is the repository owner and already has full access.`));
       }
 
       const userErr = await verifyGitHubUser(env, inv, username);
-      if (userErr) return htmlResp(formPage(token, userErr));
+      if (userErr) return htmlResp(formPage(token, inv, userErr));
 
       const { claim, stub } = await reserveClaim(env, token, inv, username);
       if (!claim.ok) {
         const msg = claim.reason === "limit"
           ? "This invite link has reached its use limit."
           : `@${esc(username)} has already been invited via this link.`;
-        return htmlResp(formPage(token, msg));
+        return htmlResp(formPage(token, inv, msg));
       }
 
       const result = await sendInvite(env, inv, username);
       if (!result.ok) {
         await rollbackClaim(stub, username);
-        return htmlResp(formPage(token, result.msg));
+        return htmlResp(formPage(token, inv, result.msg));
       }
 
       await sendResendAlert(env, {
@@ -547,7 +559,7 @@ export const worker = {
         sentAt: new Date().toISOString(),
       });
 
-      return htmlResp(successPage(username));
+      return htmlResp(successPage(username, inv));
     }
 
     if (url.pathname === `${ADMIN_BASE_PATH}/invite` && request.method === "POST") {

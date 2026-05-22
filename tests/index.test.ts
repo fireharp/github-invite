@@ -162,6 +162,7 @@ describe("worker routes", () => {
 
     expect(res.status).toBe(200);
     expect(html).toContain("Private Repo Invite");
+    expect(html).toContain("fireharp/better-stack-assignment");
     expect(html).toContain('data-theme-option="system"');
     expect(html).toContain('data-theme-option="light"');
     expect(html).toContain('data-theme-option="dark"');
