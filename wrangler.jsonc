@@ -1,0 +1,23 @@
+{
+  "name": "github-invite-broker",
+  "main": "src/index.ts",
+  "compatibility_date": "2024-11-01",
+  "account_id": "6c9173597dd654f0f82c2506ade66c9b",
+
+  "routes": [
+    { "pattern": "github-invite.fireharp.com", "zone_name": "fireharp.com", "custom_domain": true }
+  ],
+
+  "kv_namespaces": [
+    { "binding": "INVITE_KV", "id": "db9353a2422b407e8104c80428ac2011" }
+  ],
+
+  "durable_objects": {
+    "bindings": [
+      { "name": "INVITE_CLAIMS", "class_name": "InviteClaims" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_classes": ["InviteClaims"] }
+  ]
+}

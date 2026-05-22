@@ -1,0 +1,18 @@
+{
+  "name": "github-invite-broker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260515.1",
+    "typescript": "^6.0.3",
+    "vitest": "^4.0.9",
+    "wrangler": "^4.92.0"
+  }
+}
