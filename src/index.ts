@@ -22,36 +22,151 @@ const ADMIN_BASE_PATH = "/admin";
 
 const STYLES = `
   *, *::before, *::after { box-sizing: border-box; }
+  :root {
+    color-scheme: light;
+    --bg: #f6f8fa;
+    --card: #ffffff;
+    --border: #d0d7de;
+    --text: #24292f;
+    --muted: #57606a;
+    --field: #ffffff;
+    --focus: #0969da;
+    --button: #1f883d;
+    --button-hover: #1a7f37;
+    --error-bg: #ffebe9;
+    --error-border: #cf222e;
+    --error-text: #a40e26;
+    --shadow: 0 24px 80px rgba(31, 35, 40, 0.12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #0d1117;
+      --card: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --field: #0d1117;
+      --focus: #388bfd;
+      --button: #238636;
+      --button-hover: #2ea043;
+      --error-bg: #3d1f1f;
+      --error-border: #f85149;
+      --error-text: #f85149;
+      --shadow: 0 24px 80px rgba(1, 4, 9, 0.42);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0d1117;
+    --card: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --field: #0d1117;
+    --focus: #388bfd;
+    --button: #238636;
+    --button-hover: #2ea043;
+    --error-bg: #3d1f1f;
+    --error-border: #f85149;
+    --error-text: #f85149;
+    --shadow: 0 24px 80px rgba(1, 4, 9, 0.42);
+  }
   body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    background: #0d1117; color: #e6edf3;
+    background: var(--bg); color: var(--text);
     display: flex; align-items: center; justify-content: center;
     min-height: 100vh; margin: 0; padding: 20px;
   }
-  .card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 32px; max-width: 420px; width: 100%; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 32px; max-width: 420px; width: 100%; box-shadow: var(--shadow); }
   h1 { font-size: 1.25rem; margin: 0 0 8px; letter-spacing: 0; }
-  p  { color: #8b949e; font-size: 0.9rem; margin: 0 0 20px; }
+  p  { color: var(--muted); font-size: 0.9rem; margin: 0 0 20px; }
   input {
     width: 100%; padding: 10px 12px; font-size: 1rem;
-    background: #0d1117; color: #e6edf3;
-    border: 1px solid #30363d; border-radius: 6px;
+    background: var(--field); color: var(--text);
+    border: 1px solid var(--border); border-radius: 6px;
     margin-bottom: 12px; outline: none;
   }
-  input:focus { border-color: #388bfd; }
-  button {
+  input:focus { border-color: var(--focus); box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 22%, transparent); }
+  form button {
     display: block; width: 100%; padding: 10px; font-size: 1rem; font-weight: 600;
-    background: #238636; color: #fff; border: none; border-radius: 6px; cursor: pointer;
+    background: var(--button); color: #fff; border: none; border-radius: 6px; cursor: pointer;
   }
-  button:hover { background: #2ea043; }
+  form button:hover { background: var(--button-hover); }
   .msg { padding: 10px 12px; border-radius: 6px; font-size: 0.9rem; margin-bottom: 16px; }
-  .error { background: #3d1f1f; border: 1px solid #f85149; color: #f85149; }
+  .error { background: var(--error-bg); border: 1px solid var(--error-border); color: var(--error-text); }
+  .theme-switch {
+    position: fixed; top: 16px; right: 16px; display: flex; gap: 4px;
+    background: color-mix(in srgb, var(--card) 86%, transparent);
+    border: 1px solid var(--border); border-radius: 8px; padding: 4px;
+    box-shadow: 0 8px 32px rgba(31, 35, 40, 0.12);
+  }
+  .theme-switch button {
+    border: 0; border-radius: 6px; padding: 6px 10px; cursor: pointer;
+    background: transparent; color: var(--muted); font: inherit; font-size: 0.78rem;
+  }
+  .theme-switch button[aria-pressed="true"] { background: var(--text); color: var(--card); }
+  @media (max-width: 520px) {
+    body { align-items: flex-start; padding-top: 72px; }
+    .theme-switch { left: 16px; right: auto; }
+    .card { padding: 24px; }
+  }
+`;
+
+const THEME_BOOT = `
+  (function() {
+    try {
+      var key = "github-invite-theme";
+      var stored = localStorage.getItem(key);
+      var theme = stored === "light" || stored === "dark" || stored === "system" ? stored : "system";
+      document.documentElement.dataset.theme = theme;
+    } catch (_) {
+      document.documentElement.dataset.theme = "system";
+    }
+  })();
+`;
+
+const THEME_CONTROLS = `
+  <div class="theme-switch" role="group" aria-label="Color theme">
+    <button type="button" data-theme-option="system" aria-pressed="true">System</button>
+    <button type="button" data-theme-option="light" aria-pressed="false">Light</button>
+    <button type="button" data-theme-option="dark" aria-pressed="false">Dark</button>
+  </div>
+`;
+
+const THEME_SCRIPT = `
+  (function() {
+    var key = "github-invite-theme";
+    var buttons = Array.prototype.slice.call(document.querySelectorAll("[data-theme-option]"));
+    function normalize(theme) {
+      return theme === "light" || theme === "dark" || theme === "system" ? theme : "system";
+    }
+    function apply(theme, persist) {
+      theme = normalize(theme);
+      document.documentElement.dataset.theme = theme;
+      buttons.forEach(function(button) {
+        button.setAttribute("aria-pressed", button.dataset.themeOption === theme ? "true" : "false");
+      });
+      if (persist) {
+        try { localStorage.setItem(key, theme); } catch (_) {}
+      }
+    }
+    buttons.forEach(function(button) {
+      button.addEventListener("click", function() {
+        apply(button.dataset.themeOption, true);
+      });
+    });
+    var current = "system";
+    try { current = localStorage.getItem(key) || "system"; } catch (_) {}
+    apply(current, false);
+  })();
 `;
 
 const wrap = (inner: string) =>
   `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>GitHub Repo Invite</title><style>${STYLES}</style></head>
-<body><div class="card">${inner}</div></body></html>`;
+<title>GitHub Repo Invite</title><script>${THEME_BOOT}</script><style>${STYLES}</style></head>
+<body>${THEME_CONTROLS}<div class="card">${inner}</div><script>${THEME_SCRIPT}</script></body></html>`;
 
 const formPage = (token: string, error?: string) => wrap(`
   <h1>Private Repo Invite</h1>

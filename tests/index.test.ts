@@ -158,9 +158,14 @@ describe("worker routes", () => {
   it("renders the invite form for a valid token", async () => {
     const env = await makeEnv(baseInvite);
     const res = await worker.fetch(new Request("https://github-invite.fireharp.com/?token=share-token"), env);
+    const html = await res.text();
 
     expect(res.status).toBe(200);
-    expect(await res.text()).toContain("Private Repo Invite");
+    expect(html).toContain("Private Repo Invite");
+    expect(html).toContain('data-theme-option="system"');
+    expect(html).toContain('data-theme-option="light"');
+    expect(html).toContain('data-theme-option="dark"');
+    expect(html).toContain("github-invite-theme");
   });
 
   it("requires admin auth", async () => {
